@@ -12,7 +12,7 @@ export function init() {
   ready = (async () => {
     if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return false;
     try {
-      const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm');
+      const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/+esm');
       const client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: true } });
       const { data } = await client.auth.getSession();
       if (!data.session) {

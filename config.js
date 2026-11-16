@@ -1,4 +1,3 @@
-// Supabase 설정 — README 의 "Supabase 설정" 순서대로 값 넣기
-// anon key 는 공개용 키라 여기 넣어도 됨 (service_role 키는 절대 넣지 말 것)
-export const SUPABASE_URL = '';
-export const SUPABASE_ANON_KEY = '';
+// Supabase 설정 (anon/publishable 키는 공개용이라 여기 넣어도 됨. secret/service_role 키는 절대 넣지 말 것)
+export const SUPABASE_URL = 'https://hzbvqvpgckwldjoeugir.supabase.co';
+export const SUPABASE_ANON_KEY = 'sb_publishable_HP3gHW0oidpPzvNbOP9oLg_kR0vpFFh';
