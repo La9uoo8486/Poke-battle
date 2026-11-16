@@ -1,34 +1,74 @@
 {
-  "note": "기믹 허용 여부는 각 게임/레귤레이션 공식 룰 기준. verified=false 는 확인 필요 항목.",
+  "note": "기믹 허용 여부는 각 게임/레귤레이션 공식 룰 기준. mega=기존(XY·ORAS) 메가, megaZA=레전즈 Z-A 메가. verified=false 는 확인 필요 항목.",
   "formats": [
     {
-      "key": "gen9championsvgc2026regmc", "game": "champions", "label": "챔피언스 더블 (M-C)",
-      "battle": "doubles", "rating": 1760, "period": "2026-09-09 ~ 2026-12-02",
-      "gimmicks": { "mega": true, "z": false, "dynamax": false, "tera": false },
+      "key": "gen9championsvgc2026regmc",
+      "game": "champions",
+      "label": "챔피언스 더블 (M-C)",
+      "battle": "doubles",
+      "rating": 1760,
+      "period": "2026-09-09 ~ 2026-12-02",
+      "gimmicks": {
+        "mega": true,
+        "megaZA": true,
+        "z": false,
+        "dynamax": false,
+        "tera": false
+      },
       "verified": true,
       "source": "https://serebii.net/pokemonchampions/rankedbattle/regulationm-c.shtml",
       "memo": "레벨 50 고정, 6마리 중 4마리 선출, 같은 도구·같은 도감번호 금지. Z메가(메가한카리아스Z 등)는 메가진화의 한 종류이며 Z기술과 다름."
     },
     {
-      "key": "gen9championsbssregmc", "game": "champions", "label": "챔피언스 싱글 (M-C)",
-      "battle": "singles", "rating": 1760, "period": "2026-09-09 ~ 2026-12-02",
-      "gimmicks": { "mega": true, "z": false, "dynamax": false, "tera": false },
+      "key": "gen9championsbssregmc",
+      "game": "champions",
+      "label": "챔피언스 싱글 (M-C)",
+      "battle": "singles",
+      "rating": 1760,
+      "period": "2026-09-09 ~ 2026-12-02",
+      "gimmicks": {
+        "mega": true,
+        "megaZA": true,
+        "z": false,
+        "dynamax": false,
+        "tera": false
+      },
       "verified": true,
       "source": "https://serebii.net/pokemonchampions/rankedbattle/regulationm-c.shtml",
       "memo": "레벨 50 고정, 6마리 중 3마리 선출."
     },
     {
-      "key": "gen9vgc2024regg", "game": "sv", "label": "스칼렛·바이올렛 더블 (레귤레이션 G)",
-      "battle": "doubles", "rating": 1760, "period": "Showdown 래더 기준",
-      "gimmicks": { "mega": false, "z": false, "dynamax": false, "tera": true },
+      "key": "gen9vgc2024regg",
+      "game": "sv",
+      "label": "스칼렛·바이올렛 더블 (레귤레이션 G)",
+      "battle": "doubles",
+      "rating": 1760,
+      "period": "Showdown 래더 기준",
+      "gimmicks": {
+        "mega": false,
+        "megaZA": false,
+        "z": false,
+        "dynamax": false,
+        "tera": true
+      },
       "verified": true,
       "source": "https://www.smogon.com/stats/",
       "memo": "SV에는 메가·Z기술·다이맥스가 없음. 테라스탈만 사용."
     },
     {
-      "key": "gen9ou", "game": "sv", "label": "스칼렛·바이올렛 싱글 (Smogon OU)",
-      "battle": "singles", "rating": 1695, "period": "Showdown 래더 기준",
-      "gimmicks": { "mega": false, "z": false, "dynamax": false, "tera": true },
+      "key": "gen9ou",
+      "game": "sv",
+      "label": "스칼렛·바이올렛 싱글 (Smogon OU)",
+      "battle": "singles",
+      "rating": 1695,
+      "period": "Showdown 래더 기준",
+      "gimmicks": {
+        "mega": false,
+        "megaZA": false,
+        "z": false,
+        "dynamax": false,
+        "tera": true
+      },
       "verified": true,
       "source": "https://www.smogon.com/stats/",
       "memo": "Smogon 커뮤니티 룰(OU). 공식 랭크배틀과 다름."

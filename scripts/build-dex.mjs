@@ -58,7 +58,7 @@ for (const n of formNames) {
   if (n.local_language_id === EN) formEn[n.pokemon_form_id] = n.pokemon_name || '';
 }
 
-const SKIP = /-(gmax|totem|starter|cap|cosplay|rock-star|belle|pop-star|phd|libre|eternamax)(-|$)|-own-tempo|-battle-bond|-power-construct|-busted|-totem/;
+const SKIP = /-(totem|starter|cap|cosplay|rock-star|belle|pop-star|phd|libre|eternamax)(-|$)|-own-tempo|-battle-bond|-power-construct|-busted|-totem/;
 const REGION = { alola: '알로라', galar: '가라르', hisui: '히스이', paldea: '팔데아' };
 const defaultBySpecies = {};
 for (const p of pokemon) if (p.is_default === '1') defaultBySpecies[p.species_id] = p;
@@ -72,10 +72,13 @@ for (const p of pokemon) {
     if (SKIP.test(p.identifier)) continue;
     const base = defaultBySpecies[p.species_id];
     const same = base && statMap[base.id]?.join() === st.join() && typeMap[base.id]?.join() === ty.join();
-    if (same && !/mega/.test(p.identifier)) continue; // 외형만 다른 폼 제외
+    if (same && !/mega|gmax/.test(p.identifier)) continue; // 외형만 다른 폼 제외
   }
   const f = formOf[p.id];
   const mega = /-mega(-|$)/.test(p.identifier);
+  const gmax = /-gmax$/.test(p.identifier);
+  // 레전즈 Z-A(버전그룹 30 이상)에서 추가된 메가 = 2, 기존(XY·ORAS) 메가 = 1
+  const megaZA = mega && f && +f.introduced_in_version_group_id >= 30;
   const sKo = spName[p.species_id] || spEn[p.species_id];
   let ko = sKo;
   if (!isDefault) {
@@ -84,6 +87,7 @@ for (const p of pokemon) {
       const suf = p.identifier.split('-mega')[1]?.replace('-', '').toUpperCase() || '';
       const reg = Object.keys(REGION).find(r => p.identifier.includes('-' + r));
       if (mega) ko = '메가' + sKo + suf;
+      else if (gmax) ko = '거다이맥스 ' + sKo;
       else if (reg) ko = REGION[reg] + ' ' + sKo;
       else ko = sKo + ' (' + p.identifier.replace(defaultBySpecies[p.species_id]?.identifier + '-', '') + ')';
     }
@@ -91,7 +95,7 @@ for (const p of pokemon) {
   dex.push({
     id: +p.id, sp: +p.species_id, key: p.identifier, ko,
     en: (!isDefault && f && formEn[f.id]) || spEn[p.species_id] || p.identifier,
-    t: ty.filter(Boolean), s: st, ...(mega ? { m: 1 } : {}), ...(isDefault ? {} : { f: 1 }),
+    t: ty.filter(Boolean), s: st, ...(mega ? { m: megaZA ? 2 : 1 } : {}), ...(gmax ? { g: 1 } : {}), ...(isDefault ? {} : { f: 1 }),
   });
 }
 dex.sort((a, b) => a.sp - b.sp || a.id - b.id);

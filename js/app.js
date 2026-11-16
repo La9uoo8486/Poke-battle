@@ -1,13 +1,19 @@
 import {
   S, loadData, store, esc, mult, defenseProfile, multLabel, multClass, defClass,
   typeBadge, typeBadges, spriteImg, usageOf, usageMon, showdownName, searchDex, total, STAT_KO, nm,
+  allowed, setGimmick, gmCustom, resetGimmicks, loadGimmicks,
 } from './data.js';
 import * as Votes from './votes.js';
 
 const $ = (s, el = document) => el.querySelector(s);
 const view = $('#view');
 const favs = new Set(store.get('favs', []));
-const GM_LABEL = { mega: '메가진화', z: 'Z기술', dynamax: '다이맥스', tera: '테라스탈' };
+const GM_LABEL = { mega: '메가진화', megaZA: '메가진화 Z-A', z: 'Z기술', dynamax: '다이맥스', tera: '테라스탈' };
+const GM_HELP = { mega: 'XY·ORAS 메가진화 폼', megaZA: '레전즈 Z-A에서 추가된 메가진화 폼', z: '파티 빌더에서 Z크리스탈 선택', dynamax: '거다이맥스 폼', tera: '파티 빌더에서 테라 타입 선택' };
+const Z_ITEM = { normal: 'Normalium Z', fire: 'Firium Z', water: 'Waterium Z', grass: 'Grassium Z', electric: 'Electrium Z', ice: 'Icium Z', fighting: 'Fightinium Z', poison: 'Poisonium Z', ground: 'Groundium Z', flying: 'Flyinium Z', psychic: 'Psychium Z', bug: 'Buginium Z', rock: 'Rockium Z', ghost: 'Ghostium Z', dragon: 'Dragonium Z', dark: 'Darkinium Z', steel: 'Steelium Z', fairy: 'Fairium Z' };
+function setFormat(f) {
+  S.format = f; $('#formatSel').value = f.key; store.set('format', f.key); loadGimmicks(); renderGimmicks();
+}
 
 // ================= 공통 UI =================
 function toast(msg) {
@@ -55,7 +61,7 @@ function renderHeader() {
   sel.innerHTML = Object.entries(groups).map(([g, label]) =>
     `<optgroup label="${label}">${S.formats.filter(f => f.game === g).map(f => `<option value="${f.key}">${esc(f.label)}</option>`).join('')}</optgroup>`).join('');
   sel.value = S.format.key;
-  sel.onchange = () => { S.format = S.formats.find(f => f.key === sel.value); store.set('format', S.format.key); renderGimmicks(); route(); };
+  sel.onchange = () => { setFormat(S.formats.find(f => f.key === sel.value)); route(); };
   renderGimmicks();
   $('#themeBtn').onclick = () => {
     const cur = document.documentElement.dataset.theme
@@ -65,13 +71,25 @@ function renderHeader() {
     try { localStorage.setItem('theme', next); } catch {}
   };
 }
+// 기믹 칩: 누르면 켜고(포함) 끔(제외). 포맷 공식 룰과 다르면 표시 + 초기화
 function renderGimmicks() {
   const f = S.format;
-  $('#gimmicks').innerHTML = Object.entries(GM_LABEL).map(([k, l]) =>
-    `<span class="gm ${f.gimmicks[k] ? 'on' : 'off'}" title="${esc(f.label)}">${f.gimmicks[k] ? '✓' : '✕'} ${l}</span>`).join('')
+  $('#gimmicks').innerHTML = Object.entries(GM_LABEL).map(([k, l]) => {
+    const on = !!S.gm[k], off = on !== !!f.gimmicks[k];
+    return `<button type="button" class="gm ${on ? 'on' : 'off'} ${off ? 'custom' : ''}" data-gm="${k}" aria-pressed="${on}"
+      title="${GM_HELP[k]} · 공식 룰: ${f.gimmicks[k] ? '허용' : '불가'}">${on ? '✓' : '✕'} ${l}</button>`;
+  }).join('')
     + `<span class="gm">${f.battle === 'doubles' ? '더블' : '싱글'}</span>`
+    + (gmCustom() ? '<button type="button" class="gm warn" data-gm-reset>공식 룰과 다름 · 초기화</button>' : '')
     + (f.verified ? '' : '<span class="gm" style="color:var(--warn)">룰 확인 필요</span>');
 }
+document.getElementById('gimmicks').addEventListener('click', e => {
+  const b = e.target.closest('[data-gm]'), r = e.target.closest('[data-gm-reset]');
+  if (b) setGimmick(b.dataset.gm, !S.gm[b.dataset.gm]);
+  else if (r) resetGimmicks();
+  else return;
+  renderGimmicks(); route();
+});
 
 // ================= 라우터 =================
 const routes = { usage: viewUsage, rank: viewRank, dex: viewDex, type: viewType, party: viewParty, counter: viewCounter, quiz: viewQuiz };
@@ -97,11 +115,14 @@ function viewUsage() {
   const box = $('#u');
   if (!u) { box.innerHTML = '<div class="note warn">이 포맷은 아직 사용률 데이터가 없습니다. 다음 자동 갱신(매주 월) 후 표시됩니다.</div>'; return; }
   const max = u.mons[0]?.usage || 1;
+  const hidden = u.mons.filter(m => m.key && !allowed(S.byKey.get(m.key))).length;
   box.innerHTML = `<div class="row small muted"><span>${u.month} 통계 · ${u.battles ? u.battles.toLocaleString() + '판' : ''}</span>
       <span class="grow"></span><span>갱신 ${new Date(S.usage.updated).toLocaleDateString('ko-KR')}</span></div>
     ${S.usage.seed ? '<div class="note">초기 데이터(상위 40위, 사용률만). 첫 자동 갱신 후 기술·도구·테라·카운터 정보가 추가됩니다.</div>' : ''}
+    ${hidden ? `<div class="note">꺼둔 기믹 때문에 ${hidden}마리를 숨겼어요. (순위 번호는 원래 순위)</div>` : ''}
     <div class="list">${u.mons.map(m => {
       const d = S.byKey.get(m.key);
+      if (d && !allowed(d)) return '';
       if (!d) return `<div class="item"><span class="rank">${m.rank}</span><span class="grow">${esc(m.name)} <span class="muted small">(도감 매칭 안 됨)</span></span><span class="pct">${m.usage}%</span></div>`;
       return `<div class="item" role="button" tabindex="0" data-poke="${d.key}"><span class="rank">${m.rank}</span>${spriteImg(d)}
         <span class="grow"><span class="name">${esc(d.ko)}</span> ${typeBadges(d.t)}
@@ -137,7 +158,7 @@ async function rankUsers(box) {
   box.innerHTML = `${online ? `<div class="note">${esc(S.format.label)} 기준, 표 ${minVotes}개 이상 받은 포켓몬만 표시. 점수: S=5 A=4 B=3 C=2 D=1 평균.</div>`
       : '<div class="note warn">서버 미연결 상태라 이 기기에서 내가 매긴 결과만 보입니다. (Supabase 설정 후 모든 유저 결과가 모입니다)</div>'}
     ${ranked.length ? `<div class="list">${ranked.map((r, i) => {
-      const d = S.byKey.get(r.pokemon); if (!d) return '';
+      const d = S.byKey.get(r.pokemon); if (!allowed(d)) return '';
       return `<button class="item" data-poke="${d.key}"><span class="rank">${i + 1}</span>${spriteImg(d)}
         <span class="grow"><span class="name">${esc(d.ko)}</span> ${typeBadges(d.t)}<div class="small muted">${r.votes}표</div></span>
         <span class="pct">${tierOf(r.avg)} · ${(+r.avg).toFixed(2)}</span></button>`;
@@ -157,7 +178,7 @@ async function rankVote(box) {
     <div class="list" id="vl"></div>`;
   const list = $('#vl');
   const row = key => {
-    const d = S.byKey.get(key); if (!d) return '';
+    const d = S.byKey.get(key); if (!allowed(d)) return '';
     return `<div class="item" data-row="${key}">${spriteImg(d)}<span class="grow"><a href="#" data-poke="${key}" class="name">${esc(d.ko)}</a><br>${typeBadges(d.t)}</span>
       <span class="tiers">${TIERS.map(([s, l]) => `<button data-s="${s}" class="${mine[key] === s ? 'on' : ''}">${l}</button>`).join('')}</span></div>`;
   };
@@ -191,7 +212,7 @@ function rankStats(box) {
     const k = +$('#ss').value, onlyU = $('#onlyU').checked;
     store.set('statSort', k); store.set('statOnlyU', onlyU);
     const u = usageOf();
-    let pool = onlyU && u ? u.mons.map(m => S.byKey.get(m.key)).filter(Boolean) : S.dex;
+    let pool = (onlyU && u ? u.mons.map(m => S.byKey.get(m.key)) : S.dex).filter(allowed);
     const val = d => k === 6 ? total(d) : d.s[k];
     pool = [...pool].sort((a, b) => val(b) - val(a)).slice(0, 100);
     $('#sl').innerHTML = pool.map((d, i) => `<div class="item" role="button" tabindex="0" data-poke="${d.key}"><span class="rank">${i + 1}</span>${spriteImg(d)}
@@ -209,7 +230,7 @@ function viewDex() {
       <input type="search" id="q" class="grow" placeholder="이름·번호 검색" value="${esc(st.q)}">
       <select id="ty"><option value="">전체 타입</option>${S.types.map(t => `<option value="${t.key}">${t.ko}</option>`).join('')}</select>
       <label class="small"><input type="checkbox" id="fv" ${st.fav ? 'checked' : ''}> ★ 즐겨찾기</label>
-      <label class="small"><input type="checkbox" id="mg" ${st.mega ? 'checked' : ''}> 메가만</label>
+      <label class="small"><input type="checkbox" id="mg" ${st.mega ? 'checked' : ''}> 메가·거다이맥스만</label>
     </div>
     <div class="small muted" id="cnt"></div><div class="grid" id="g"></div><div style="text-align:center;margin-top:10px"><button class="btn" id="more" hidden>더 보기</button></div>`;
   $('#ty').value = st.type;
@@ -218,9 +239,9 @@ function viewDex() {
     Object.assign(st, { q: $('#q').value, type: $('#ty').value, fav: $('#fv').checked, mega: $('#mg').checked });
     store.set('dexFilter', st);
     const q = st.q.trim().toLowerCase(), num = /^\d+$/.test(q) ? +q : null;
-    const res = S.dex.filter(d =>
+    const res = S.dex.filter(d => allowed(d) &&
       (!q || (num ? d.sp === num : d.ko.toLowerCase().includes(q) || d.en.toLowerCase().includes(q))) &&
-      (!st.type || d.t.includes(st.type)) && (!st.fav || favs.has(d.key)) && (!st.mega || d.m));
+      (!st.type || d.t.includes(st.type)) && (!st.fav || favs.has(d.key)) && (!st.mega || d.m || d.g));
     $('#cnt').textContent = `${res.length}마리`;
     $('#g').innerHTML = res.slice(0, limit).map(d => `<div class="tile" data-poke="${d.key}" role="button" tabindex="0">${starBtn(d.key)}
       ${spriteImg(d)}<div class="no">No.${String(d.sp).padStart(4, '0')}</div><div class="name">${esc(d.ko)}</div><div>${typeBadges(d.t)}</div></div>`).join('');
@@ -237,14 +258,15 @@ function openDetail(key) {
   const prof = defenseProfile(d.t);
   const groups = [[4, '4배'], [2, '2배'], [0.5, '½배'], [0.25, '¼배'], [0, '무효']];
   const um = usageMon(key);
-  const forms = (S.bySp.get(d.sp) || []).filter(x => x.key !== key);
+  const forms = (S.bySp.get(d.sp) || []).filter(x => x.key !== key && allowed(x));
   const maxS = 200;
   const list = (arr, fmt = x => esc(nm(x[0])) + ' ' + x[1] + '%') => arr?.length ? `<div class="kv">${arr.map(x => `<span class="chip">${fmt(x)}</span>`).join('')}</div>` : '';
   $('#modalBody').innerHTML = `<button class="close" onclick="this.closest('dialog').close()" aria-label="닫기">×</button>
     <div class="row">${spriteImg(d, 'art', true)}<div class="grow">
       <div class="muted small">No.${String(d.sp).padStart(4, '0')} · ${esc(d.en)}</div>
       <h2 style="margin:2px 0">${esc(d.ko)} ${starBtn(d.key)}</h2>${typeBadges(d.t)}
-      ${d.m ? `<div class="small" style="margin-top:6px">${S.format.gimmicks.mega ? '<span class="ok">이 포맷에서 메가진화 가능</span>' : '<span class="danger">이 포맷은 메가진화 불가</span>'}</div>` : ''}
+      ${d.m ? `<div class="small" style="margin-top:6px">${d.m === 2 ? 'Z-A 메가진화' : '기존 메가진화'} · ${S.format.gimmicks[d.m === 2 ? 'megaZA' : 'mega'] ? '<span class="ok">이 포맷 공식 룰에서 사용 가능</span>' : '<span class="danger">이 포맷 공식 룰에서 사용 불가</span>'}</div>` : ''}
+      ${d.g ? `<div class="small" style="margin-top:6px">거다이맥스 · ${S.format.gimmicks.dynamax ? '<span class="ok">이 포맷 공식 룰에서 사용 가능</span>' : '<span class="danger">이 포맷 공식 룰에서 사용 불가</span>'}</div>` : ''}
     </div></div>
     <h3>종족값 <span class="muted small">합계 ${total(d)}</span></h3>
     <div class="stats">${d.s.map((v, i) => `<span>${STAT_KO[i]}</span><span class="v">${v}</span><div class="bar"><i style="width:${Math.min(100, v / maxS * 100)}%;background:${v >= 120 ? 'var(--good)' : v < 60 ? 'var(--bad)' : 'var(--accent)'}"></i></div>`).join('')}</div>
@@ -254,7 +276,7 @@ function openDetail(key) {
       ${um.moves ? '<div class="small muted">기술</div>' + list(um.moves) : ''}
       ${um.items ? '<div class="small muted">도구</div>' + list(um.items) : ''}
       ${um.abilities ? '<div class="small muted">특성</div>' + list(um.abilities) : ''}
-      ${S.format.gimmicks.tera && um.tera?.length ? '<div class="small muted">테라스탈</div>' + list(um.tera, x => (S.typeKo[x[0].toLowerCase()] || esc(x[0])) + ' ' + x[1] + '%') : ''}
+      ${S.gm.tera && um.tera?.length ? '<div class="small muted">테라스탈</div>' + list(um.tera, x => (S.typeKo[x[0].toLowerCase()] || esc(x[0])) + ' ' + x[1] + '%') : ''}
       ${um.mates?.length ? '<div class="small muted">자주 같이 쓰는 포켓몬</div>' + `<div class="kv">${um.mates.map(m => m[1] ? `<a class="chip" href="#" data-poke="${m[1]}">${esc(S.byKey.get(m[1])?.ko || m[0])}</a>` : `<span class="chip">${esc(m[0])}</span>`).join('')}</div>` : ''}
       ${!um.moves ? '<div class="note">기술·도구 등 상세 정보는 첫 자동 갱신 후 표시됩니다.</div>' : ''}` : ''}
     ${forms.length ? `<h3>다른 폼</h3><div class="kv">${forms.map(f => `<a class="chip" href="#" data-poke="${f.key}">${esc(f.ko)}</a>`).join('')}</div>` : ''}
@@ -316,17 +338,18 @@ function addToParty(key) {
   if (parseHash().name === 'party') route();
 }
 function encodeParty() {
-  return party.slots.map(s => s.key + (s.tera ? '.' + s.tera : '')).join(',');
+  return party.slots.map(s => [s.key, s.tera || '', s.z || ''].join('.').replace(/\.+$/, '')).join(',');
 }
 function decodeParty(str) {
-  return str.split(',').filter(Boolean).slice(0, 6).map(x => { const [key, tera] = x.split('.'); return { key, tera: tera || '' }; })
-    .filter(s => S.byKey.has(s.key) && (!s.tera || S.typeKo[s.tera]));
+  return str.split(',').filter(Boolean).slice(0, 6).map(x => { const [key, tera, z] = x.split('.'); return { key, tera: tera || '', z: z || '' }; })
+    .filter(s => S.byKey.has(s.key)).map(s => ({ ...s, tera: S.typeKo[s.tera] ? s.tera : '', z: Z_ITEM[s.z] ? s.z : '' }));
 }
 function exportShowdown() {
   return party.slots.map(s => {
     const d = S.byKey.get(s.key);
     const lines = [showdownName(d), 'Level: 50'];
-    if (s.tera && S.format.gimmicks.tera) lines.push('Tera Type: ' + s.tera[0].toUpperCase() + s.tera.slice(1));
+    if (s.z && S.gm.z) lines[0] += ' @ ' + Z_ITEM[s.z];
+    if (s.tera && S.gm.tera) lines.push('Tera Type: ' + s.tera[0].toUpperCase() + s.tera.slice(1));
     return lines.join('\n');
   }).join('\n\n');
 }
@@ -347,16 +370,23 @@ function importShowdown(text) {
     }
     const teraLine = lines.find(l => /^Tera Type:/i.test(l));
     const tera = teraLine ? teraLine.split(':')[1].trim().toLowerCase() : '';
-    if (key) out.push({ key, tera: S.typeKo[tera] ? tera : '' });
+    const z = Object.keys(Z_ITEM).find(t => Z_ITEM[t].toLowerCase() === item.toLowerCase()) || '';
+    if (key) out.push({ key, tera: S.typeKo[tera] ? tera : '', z });
   }
   return out.slice(0, 6);
 }
 function partyWarnings() {
-  const g = S.format.gimmicks, w = [];
+  const g = S.gm, w = [];
+  const name = s => S.byKey.get(s.key).ko;
   const megas = party.slots.filter(s => S.byKey.get(s.key)?.m);
-  if (megas.length && !g.mega) w.push('이 포맷은 메가진화를 쓸 수 없습니다: ' + megas.map(s => S.byKey.get(s.key).ko).join(', '));
-  if (megas.length > 1 && g.mega) w.push('메가진화는 한 배틀에 1마리만 가능합니다. (메가폼 ' + megas.length + '마리 등록됨, 선출 때 주의)');
-  if (party.slots.some(s => s.tera) && !g.tera) w.push('이 포맷은 테라스탈을 쓸 수 없어 테라 타입은 계산에서 빠집니다.');
+  const offMega = megas.filter(s => !g[S.byKey.get(s.key).m === 2 ? 'megaZA' : 'mega']);
+  if (offMega.length) w.push('꺼둔 메가진화 종류라 제외 대상입니다: ' + offMega.map(name).join(', '));
+  const gmaxes = party.slots.filter(s => S.byKey.get(s.key)?.g);
+  if (gmaxes.length && !g.dynamax) w.push('다이맥스를 꺼둬서 거다이맥스 폼은 제외 대상입니다: ' + gmaxes.map(name).join(', '));
+  if (megas.length > 1 && (g.mega || g.megaZA)) w.push('메가진화는 한 배틀에 1마리만 가능합니다. (메가폼 ' + megas.length + '마리 등록됨, 선출 때 주의)');
+  if (party.slots.filter(s => s.z).length > 1 && g.z) w.push('Z기술은 한 배틀에 1번만 쓸 수 있습니다.');
+  if (party.slots.some(s => s.tera) && !g.tera) w.push('테라스탈을 꺼둬서 테라 타입은 계산에서 빠집니다.');
+  if (party.slots.some(s => s.z) && !g.z) w.push('Z기술을 꺼둬서 Z크리스탈은 내보내기에서 빠집니다.');
   const sps = party.slots.map(s => S.byKey.get(s.key)?.sp);
   if (new Set(sps).size !== sps.length) w.push('같은 도감번호 포켓몬이 2마리 이상입니다 (종족 중복 금지 룰).');
   return w.filter(Boolean);
@@ -367,12 +397,12 @@ function viewParty(params) {
     const f = S.formats.find(x => x.key === params.get('f'));
     if (shared.length && (party.slots.length === 0 || confirmReplace())) {
       party = { slots: shared }; saveParty();
-      if (f) { S.format = f; $('#formatSel').value = f.key; store.set('format', f.key); renderGimmicks(); }
+      if (f) setFormat(f);
       toast('공유받은 파티를 불러왔습니다');
     }
     history.replaceState(null, '', '#/party');
   }
-  const g = S.format.gimmicks;
+  const g = S.gm;
   const slots = [...party.slots, ...Array(6 - party.slots.length).fill(null)];
   view.innerHTML = `<h2>파티 빌더</h2>
     ${partyWarnings().map(w => `<div class="note warn">${esc(w)}</div>`).join('')}
@@ -381,7 +411,9 @@ function viewParty(params) {
       const d = S.byKey.get(s.key);
       return `<div class="slot"><button class="x" data-rm="${i}" aria-label="빼기">✕</button>${spriteImg(d)}
         <a href="#" data-poke="${d.key}" class="name">${esc(d.ko)}</a><div>${typeBadges(d.t)}</div>
-        ${g.tera ? `<select data-tera="${i}"><option value="">테라 없음</option>${S.types.map(t => `<option value="${t.key}" ${s.tera === t.key ? 'selected' : ''}>테라 ${t.ko}</option>`).join('')}</select>` : ''}</div>`;
+        ${g.tera ? `<select data-tera="${i}"><option value="">테라 없음</option>${S.types.map(t => `<option value="${t.key}" ${s.tera === t.key ? 'selected' : ''}>테라 ${t.ko}</option>`).join('')}</select>` : ''}
+        ${g.z ? `<select data-z="${i}"><option value="">Z크리스탈 없음</option>${S.types.map(t => `<option value="${t.key}" ${s.z === t.key ? 'selected' : ''}>Z ${t.ko}</option>`).join('')}</select>` : ''}
+        ${d.m ? `<span class="chip">${d.m === 2 ? 'Z-A 메가' : '메가'}</span>` : ''}${d.g ? '<span class="chip">거다이맥스</span>' : ''}</div>`;
     }).join('')}</div>
     <div id="pick" style="max-width:420px;margin-top:10px" ${party.slots.length >= 6 ? 'hidden' : ''}></div>
     <div class="row" style="margin-top:10px">
@@ -399,8 +431,9 @@ function viewParty(params) {
     if (e.target.closest('[data-add]')) $('#pick input')?.focus();
   });
   $('#pt').addEventListener('change', e => {
-    const t = e.target.closest('[data-tera]'); if (!t) return;
-    party.slots[+t.dataset.tera].tera = t.value; saveParty(); drawAnalysis();
+    const t = e.target.closest('[data-tera]'), z = e.target.closest('[data-z]');
+    if (t) { party.slots[+t.dataset.tera].tera = t.value; saveParty(); drawAnalysis(); }
+    if (z) { party.slots[+z.dataset.z].z = z.value; saveParty(); route(); }
   });
   $('#share').onclick = async () => {
     if (!party.slots.length) return toast('파티가 비어 있습니다');
@@ -440,7 +473,7 @@ function viewParty(params) {
     const saved = store.get('savedParties', []);
     const l = e.target.closest('[data-load]'), d = e.target.closest('[data-del]');
     if (l) { const p = saved[+l.dataset.load]; party = { slots: decodeParty(p.t) }; saveParty();
-      const f = S.formats.find(x => x.key === p.format); if (f) { S.format = f; $('#formatSel').value = f.key; store.set('format', f.key); renderGimmicks(); }
+      const f = S.formats.find(x => x.key === p.format); if (f) setFormat(f);
       route(); }
     if (d) { saved.splice(+d.dataset.del, 1); store.set('savedParties', saved); drawSaved(); }
   });
@@ -452,7 +485,7 @@ function confirmReplace() { return confirm('공유받은 파티로 현재 파티
 function drawAnalysis() {
   const box = $('#anal'); if (!box) return;
   if (!party.slots.length) { box.innerHTML = '<p class="muted" style="margin-top:16px">포켓몬을 추가하면 약점 분석이 나옵니다.</p>'; return; }
-  const useTera = S.format.gimmicks.tera;
+  const useTera = S.gm.tera;
   const mons = party.slots.map(s => {
     const d = S.byKey.get(s.key);
     return { d, def: useTera && s.tera ? [s.tera] : d.t };
@@ -495,7 +528,7 @@ function viewCounter(params) {
 }
 function drawCounters(T) {
   const u = usageOf(), um = usageMon(T.key);
-  const pool = (u ? u.mons.map(m => S.byKey.get(m.key)) : S.dex.filter(d => total(d) >= 480)).filter(d => d && d.sp !== T.sp);
+  const pool = (u ? u.mons.map(m => S.byKey.get(m.key)) : S.dex.filter(d => total(d) >= 480)).filter(d => allowed(d) && d.sp !== T.sp);
   const scored = pool.map(C => {
     const taken = Math.max(...T.t.map(t => mult(t, C.t)));       // 상대 자속에 받는 배수
     const dealt = Math.max(...C.t.map(t => mult(t, T.t)));       // 내 자속으로 주는 배수
@@ -504,7 +537,7 @@ function drawCounters(T) {
     return { C, taken, dealt, score };
   }).filter(x => x.taken <= 1 && x.dealt >= 1).sort((a, b) => b.score - a.score).slice(0, 12);
   const seTypes = S.types.map(t => ({ t, m: mult(t.key, T.t) })).filter(x => x.m >= 2).sort((a, b) => b.m - a.m);
-  const real = um?.counters?.filter(c => c[1]) || [];
+  const real = um?.counters?.filter(c => c[1] && allowed(S.byKey.get(c[1]))) || [];
   const movesOf = C => usageMon(C.key)?.moves?.slice(0, 4).map(m => nm(m[0])).join(', ');
   $('#cres').innerHTML = `<div class="card" style="margin-top:12px"><div class="row">${spriteImg(T)}<div class="grow">
       <b>${esc(T.ko)}</b> ${typeBadges(T.t)}<div class="small muted">${T.s.join(' / ')}</div></div>

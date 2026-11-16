@@ -3,7 +3,7 @@ import { makeToKey } from '../scripts/name-map.mjs';
 
 export const S = {
   dex: [], byKey: new Map(), bySp: new Map(), types: [], typeKo: {}, chart: {},
-  formats: [], usage: { formats: {} }, format: null, toKey: null, names: {},
+  formats: [], usage: { formats: {} }, format: null, toKey: null, names: {}, gm: {},
 };
 
 export async function loadData() {
@@ -25,6 +25,29 @@ export async function loadData() {
   S.toKey = makeToKey(dex);
   const saved = store.get('format');
   S.format = S.formats.find(f => f.key === saved) || S.formats[0];
+  loadGimmicks();
+}
+
+// ---------- 기믹 (켜면 포함, 끄면 제외) ----------
+export const GM_KEYS = ['mega', 'megaZA', 'z', 'dynamax', 'tera'];
+export function loadGimmicks() {
+  const o = store.get('gm:' + S.format.key, null);
+  S.gm = { ...S.format.gimmicks, ...(o || {}) };
+}
+export function setGimmick(k, v) {
+  S.gm[k] = v;
+  const diff = Object.fromEntries(GM_KEYS.filter(x => !!S.gm[x] !== !!S.format.gimmicks[x]).map(x => [x, S.gm[x]]));
+  store.set('gm:' + S.format.key, Object.keys(diff).length ? diff : null);
+}
+export const gmCustom = () => GM_KEYS.some(x => !!S.gm[x] !== !!S.format.gimmicks[x]);
+export function resetGimmicks() { store.set('gm:' + S.format.key, null); loadGimmicks(); }
+// 현재 기믹 설정에서 이 폼을 보여줄지
+export function allowed(d) {
+  if (!d) return false;
+  if (d.m === 1 && !S.gm.mega) return false;
+  if (d.m === 2 && !S.gm.megaZA) return false;
+  if (d.g && !S.gm.dynamax) return false;
+  return true;
 }
 
 // localStorage (사파리 프라이빗 모드 등에서 실패해도 동작)
@@ -81,6 +104,7 @@ export function searchDex(q, limit = 30) {
   const num = /^\d+$/.test(q) ? +q : null;
   const res = [];
   for (const d of S.dex) {
+    if (!allowed(d)) continue;
     if (num ? d.sp === num : (d.ko.toLowerCase().includes(q) || d.en.toLowerCase().includes(q) || d.key.includes(q))) res.push(d);
     if (res.length >= limit) break;
   }
