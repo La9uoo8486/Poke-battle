@@ -38,10 +38,13 @@ for (const f of formats) {
     const entries = Object.entries(data.data);
     const sumUsage = entries.reduce((s, [, v]) => s + (v.usage || 0), 0);
     const mons = entries.sort((a, b) => b[1].usage - a[1].usage).slice(0, TOP).map(([name, v], i) => {
-      const cnt = v['Raw count'] || 1;
+      // 가중치 합계(= 특성 값 합)를 분모로 써야 % 가 맞음
+      const cnt = Object.values(v.Abilities || {}).reduce((a, b) => a + b, 0) || v['Raw count'] || 1;
       const counters = Object.entries(v['Checks and Counters'] || {})
-        .filter(([, c]) => c[0] > 30).sort((a, b) => b[1][1] - a[1][1]).slice(0, 6)
-        .map(([n, c]) => [n, toKey(n), +(c[1] * 100).toFixed(1)]);
+        // [표본 수, 상대를 쓰러뜨리거나 교체시킨 비율, 표준편차] → Smogon 방식 점수 p - 4σ
+        .filter(([, c]) => c[0] > 0.5).map(([n, c]) => [n, c[1] - 4 * c[2]])
+        .sort((a, b) => b[1] - a[1]).slice(0, 6)
+        .map(([n, sc]) => [n, toKey(n), +(Math.max(0, sc) * 100).toFixed(1)]);
       return {
         rank: i + 1, name, key: toKey(name),
         usage: +(100 * v.usage).toFixed(2),
