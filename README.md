@@ -78,4 +78,5 @@ npx serve .        또는   python -m http.server 8000
 - 사용률: Smogon 통계 (https://www.smogon.com/stats/) — **Pokémon Showdown 시뮬레이터** 래더 기준이며 게임 내 공식 랭크 순위가 아닙니다.
 - 포켓몬 챔피언스 M-C 룰(2026-09-09 ~ 12-02, 메가진화만 허용): Serebii, Victory Road 기준.
 - Showdown 내보내기에서 메가폼은 `Charizard-Mega-Y` 처럼 폼 이름으로 나갑니다. Showdown이 메가스톤 없이 이 표기를 그대로 받는지는 확인하지 못했습니다.
+- Smogon이 이번 달 "Checks and Counters" 데이터를 비워 둬서, 지금은 카운터가 타입 기준 추천만 나옵니다. 데이터가 생기면 자동 표시.
 - 카운터 "타입 기준 추천"은 자속 기술만 계산합니다 (특성·도구·서브 기술·스피드 미반영).

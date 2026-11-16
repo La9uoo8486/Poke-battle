@@ -97,3 +97,13 @@ for (const p of pokemon) {
 dex.sort((a, b) => a.sp - b.sp || a.id - b.id);
 writeFileSync(new URL('../data/dex.json', import.meta.url), JSON.stringify(dex));
 console.log('dex', dex.length, 'types', typeList.length);
+
+// ---------- 기술·도구·특성 한글명 (Showdown id → 한글) ----------
+const names = {};
+for (const [table, idTable, idCol] of [['move_names', 'moves', 'move_id'], ['item_names', 'items', 'item_id'], ['ability_names', 'abilities', 'ability_id']]) {
+  const [rows, ids] = await Promise.all([csv(table), csv(idTable)]);
+  const ident = Object.fromEntries(ids.map(r => [r.id, r.identifier]));
+  for (const r of rows) if (r.local_language_id === KO && ident[r[idCol]]) names[ident[r[idCol]].replace(/-/g, '')] = r.name;
+}
+writeFileSync(new URL('../data/names.json', import.meta.url), JSON.stringify(names));
+console.log('names', Object.keys(names).length);

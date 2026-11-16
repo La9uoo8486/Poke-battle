@@ -1,6 +1,6 @@
 import {
   S, loadData, store, esc, mult, defenseProfile, multLabel, multClass, defClass,
-  typeBadge, typeBadges, spriteImg, usageOf, usageMon, showdownName, searchDex, total, STAT_KO,
+  typeBadge, typeBadges, spriteImg, usageOf, usageMon, showdownName, searchDex, total, STAT_KO, nm,
 } from './data.js';
 import * as Votes from './votes.js';
 
@@ -239,7 +239,7 @@ function openDetail(key) {
   const um = usageMon(key);
   const forms = (S.bySp.get(d.sp) || []).filter(x => x.key !== key);
   const maxS = 200;
-  const list = (arr, fmt = x => esc(x[0]) + ' ' + x[1] + '%') => arr?.length ? `<div class="kv">${arr.map(x => `<span class="chip">${fmt(x)}</span>`).join('')}</div>` : '';
+  const list = (arr, fmt = x => esc(nm(x[0])) + ' ' + x[1] + '%') => arr?.length ? `<div class="kv">${arr.map(x => `<span class="chip">${fmt(x)}</span>`).join('')}</div>` : '';
   $('#modalBody').innerHTML = `<button class="close" onclick="this.closest('dialog').close()" aria-label="닫기">×</button>
     <div class="row">${spriteImg(d, 'art', true)}<div class="grow">
       <div class="muted small">No.${String(d.sp).padStart(4, '0')} · ${esc(d.en)}</div>
@@ -505,13 +505,13 @@ function drawCounters(T) {
   }).filter(x => x.taken <= 1 && x.dealt >= 1).sort((a, b) => b.score - a.score).slice(0, 12);
   const seTypes = S.types.map(t => ({ t, m: mult(t.key, T.t) })).filter(x => x.m >= 2).sort((a, b) => b.m - a.m);
   const real = um?.counters?.filter(c => c[1]) || [];
-  const movesOf = C => usageMon(C.key)?.moves?.slice(0, 4).map(m => m[0]).join(', ');
+  const movesOf = C => usageMon(C.key)?.moves?.slice(0, 4).map(m => nm(m[0])).join(', ');
   $('#cres').innerHTML = `<div class="card" style="margin-top:12px"><div class="row">${spriteImg(T)}<div class="grow">
       <b>${esc(T.ko)}</b> ${typeBadges(T.t)}<div class="small muted">${T.s.join(' / ')}</div></div>
       <a href="#" data-poke="${T.key}" class="btn">상세</a></div></div>
     <h3>추천 공격 타입</h3>
     ${seTypes.length ? seTypes.map(x => `<span class="mult ${multClass(x.m)}">${x.m}배</span> ${typeBadge(x.t.key)}`).join(' ') : '<p class="muted">효과가 굉장한 타입이 없습니다.</p>'}
-    ${um?.moves ? `<div class="small muted" style="margin-top:6px">상대가 자주 쓰는 기술: ${um.moves.slice(0, 4).map(m => esc(m[0])).join(', ')} — 자속 외 커버 기술도 확인하세요.</div>` : ''}
+    ${um?.moves ? `<div class="small muted" style="margin-top:6px">상대가 자주 쓰는 기술: ${um.moves.slice(0, 4).map(m => esc(nm(m[0]))).join(', ')} — 자속 외 커버 기술도 확인하세요.</div>` : ''}
     ${real.length ? `<h3>실전 데이터 카운터 <span class="small muted">(Showdown 통계)</span></h3><div class="list">${real.map(c => {
       const d = S.byKey.get(c[1]); return `<button class="item" data-poke="${d.key}">${spriteImg(d)}<span class="grow"><span class="name">${esc(d.ko)}</span> ${typeBadges(d.t)}</span><span class="pct">${c[2]}%</span></button>`;
     }).join('')}</div>` : ''}

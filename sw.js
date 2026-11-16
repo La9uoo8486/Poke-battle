@@ -3,7 +3,7 @@
 const VERSION = 'v1';
 const APP = 'app-' + VERSION, IMG = 'img-v1';
 const SHELL = ['./', 'index.html', 'css/style.css', 'js/app.js', 'js/data.js', 'js/votes.js', 'config.js',
-  'scripts/name-map.mjs', 'data/dex.json', 'data/types.json', 'data/formats.json', 'data/usage.json',
+  'scripts/name-map.mjs', 'data/dex.json', 'data/types.json', 'data/formats.json', 'data/usage.json', 'data/names.json',
   'manifest.webmanifest', 'icons/icon.svg', 'icons/icon-192.png'];
 
 self.addEventListener('install', e => {

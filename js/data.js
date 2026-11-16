@@ -3,7 +3,7 @@ import { makeToKey } from '../scripts/name-map.mjs';
 
 export const S = {
   dex: [], byKey: new Map(), bySp: new Map(), types: [], typeKo: {}, chart: {},
-  formats: [], usage: { formats: {} }, format: null, toKey: null,
+  formats: [], usage: { formats: {} }, format: null, toKey: null, names: {},
 };
 
 export async function loadData() {
@@ -12,6 +12,7 @@ export async function loadData() {
     get('data/dex.json'), get('data/types.json'), get('data/formats.json'),
     get('data/usage.json').catch(() => ({ formats: {} })),
   ]);
+  S.names = await get('data/names.json').catch(() => ({}));
   S.dex = dex;
   for (const d of dex) {
     S.byKey.set(d.key, d);
@@ -88,3 +89,6 @@ export function searchDex(q, limit = 30) {
 
 export const total = d => d.s.reduce((a, b) => a + b, 0);
 export const STAT_KO = ['HP', '공격', '방어', '특공', '특방', '스피드'];
+
+// Showdown id(closecombat) → 한글명
+export const nm = id => S.names[String(id).toLowerCase().replace(/[^a-z0-9]/g, '')] || id;
