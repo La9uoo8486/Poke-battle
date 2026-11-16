@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>포켓배틀 노트</title>
+<meta name="description" content="포켓몬 챔피언스·스칼렛바이올렛 실전 사용률, 유저 랭킹, 상성, 도감, 파티 빌더">
+<meta name="theme-color" content="#e5484d">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="css/style.css">
+<script>
+  try { const t = localStorage.getItem('theme'); if (t) document.documentElement.dataset.theme = t; } catch {}
+</script>
+</head>
+<body>
+<header class="top">
+  <div class="brand"><img src="icons/icon.svg" alt="" width="28" height="28"><span>포켓배틀 노트</span></div>
+  <select id="formatSel" aria-label="포맷 선택"></select>
+  <button id="themeBtn" class="icon-btn" aria-label="다크모드 전환" title="다크모드 전환">◐</button>
+</header>
+<div id="gimmicks" class="gimmicks"></div>
+<nav id="tabs" class="tabs">
+  <a href="#/usage" data-r="usage">실전 순위</a>
+  <a href="#/rank" data-r="rank">랭킹·투표</a>
+  <a href="#/dex" data-r="dex">도감</a>
+  <a href="#/type" data-r="type">상성</a>
+  <a href="#/party" data-r="party">파티</a>
+  <a href="#/counter" data-r="counter">카운터</a>
+  <a href="#/quiz" data-r="quiz">퀴즈</a>
+</nav>
+<main id="view" class="view"><p class="muted">불러오는 중…</p></main>
+<dialog id="modal"><div id="modalBody"></div></dialog>
+<div id="toast" class="toast" hidden></div>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
