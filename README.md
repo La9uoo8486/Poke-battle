@@ -1,87 +1,103 @@
-# 포켓배틀 노트
+# Pixelia 포켓몬 서버 · 사전예약 사이트
 
-포켓몬 챔피언스 + 스칼렛·바이올렛 배틀 정보 웹앱. 모바일·PC 둘 다 되고, 홈 화면에 설치(PWA)도 됩니다.
+마인크래프트 베드락 **Pixelia 포켓몬 서버** 사전예약 페이지. 빌드 없는 정적 사이트(HTML/CSS/JS) + Supabase.
 
 ## 기능
-| 탭 | 내용 |
-|---|---|
-| 실전 순위 | Showdown 래더 사용률 순위 (매주 자동 갱신) |
-| 랭킹·투표 | 유저 투표 순위 / S~D 투표하기 / 종족값 순위 |
-| 도감 | 1252종(메가·리전폼 포함), 검색·타입 필터·★즐겨찾기 |
-| 상성 | 방어·공격 계산기 + 전체 상성표 |
-| 파티 | 6마리 약점 분석, 테라 타입 반영, 링크 공유, Showdown 내보내기/불러오기, 파티 저장 |
-| 카운터 | 상대 포켓몬 → 유리한 포켓몬·공격 타입 추천 |
-| 퀴즈 | 타입 상성 퀴즈 (연속 정답 기록) |
-
-상단에서 포맷을 고르면 공식 룰대로 기믹 칩이 켜집니다. 칩을 누르면 켜고/끌 수 있어요 (켜면 포함, 끄면 제외).
-- 메가진화: XY·ORAS 메가 폼 / 메가진화 Z-A: 레전즈 Z-A 메가 폼 → 도감·검색·순위·카운터에서 포함/제외
-- 다이맥스: 거다이맥스 폼 포함/제외
-- Z기술: 파티 빌더에 Z크리스탈 선택 (Showdown 내보내기에 반영)
-- 테라스탈: 파티 빌더에 테라 타입 선택 (약점 분석에 반영)
-공식 룰과 다르게 바꾸면 "공식 룰과 다름 · 초기화" 칩이 뜹니다.
-포맷·기믹 설정은 `data/formats.json` 에서 바꿉니다 (새 레귤레이션 나오면 여기만 수정).
+- **공개 페이지 (`index.html`)**: 닉네임 + 유입 경로(Q1) + 추천인(Q2) 사전예약, 오픈 카운트다운(2026-12-01 00:00 KST), 목표 게이지(100/300/500), 홍보 랭킹 TOP 10
+- **추천 링크**: `?ref=닉네임` 과 `/r/닉네임` 둘 다 지원. 처음 들어온 추천인은 기기에 저장되어 새로고침해도 유지
+- **완료 화면**: N번째 사전예약자, 내 추천 링크 복사, 디스코드 버튼
+- **관리자 (`admin.html`)**: 예약자 표(검색·정렬), 유입 통계 그래프, 홍보자 랭킹(ref/직접 입력 분리), 무효·삭제, 보상 지급 체크, CSV 다운로드
 
 ## 폴더 구조
 ```
-index.html, css/, js/        화면
-config.js                    Supabase 키 넣는 곳
-data/dex.json, types.json    도감·상성 (PokeAPI)
-data/formats.json            포맷·기믹 허용 여부
-data/usage.json              사용률 (자동 갱신)
-scripts/build-dex.mjs        도감 데이터 다시 만들기
-scripts/fetch-usage.mjs      사용률 수집
-.github/workflows/           매주 월요일 자동 수집
-supabase/schema.sql          투표 테이블
-sw.js, manifest.webmanifest  PWA
+index.html, admin.html, 404.html     화면 (404.html 이 /r/닉네임 짧은 링크 처리)
+config.js                            설정 (Supabase 주소·공개키, 디스코드, 보상 문구, 오픈 시각, 캡차 사이트 키)
+css/style.css                        디자인
+js/common.js, main.js, admin.js      스크립트
+img/ball.svg                         픽셀 몬스터볼 아이콘
+supabase/schema.sql                  테이블 · RLS · RPC 함수
+supabase/functions/preorder/         캡차 검증용 Edge Function (Turnstile 쓸 때만)
+sw.js                                이전 사이트 서비스워커 제거용 (지우지 말 것)
 ```
 
 ---
 
-## 1. 배포 (GitHub Pages, 무료)
-1. GitHub에서 새 저장소 생성 (예: `pokebattle`, Public).
-2. 이 폴더 전체를 업로드 (웹에서 "Add file → Upload files"로 드래그해도 됨. `.github` 폴더도 꼭 포함).
-3. 저장소 **Settings → Pages** → Source: `Deploy from a branch`, Branch: `main` / `(root)` → Save.
-4. 1~2분 뒤 `https://<아이디>.github.io/pokebattle/` 접속.
+## 1. Supabase 설정
 
-## 2. 사용률 자동 갱신 켜기
-1. 저장소 **Settings → Actions → General** → Workflow permissions: **Read and write permissions** → Save.
-2. **Actions** 탭 → "사용률 갱신" → **Run workflow** 로 한 번 수동 실행.
-3. 이후 매주 월요일 12시(KST)에 자동 실행. 바뀐 게 있으면 `data/usage.json` 이 커밋되고 사이트에 반영됩니다.
+> `config.js` 에는 기존 포켓배틀 노트 프로젝트 주소·키가 그대로 들어 있습니다. 같은 프로젝트를 써도 테이블 이름이 달라서 충돌하지 않습니다. 새 프로젝트를 쓰려면 아래 1번부터 하고 4번에서 키를 바꾸세요.
 
-첫 실행 후 기술·도구·특성·테라·같이 쓰는 포켓몬·실전 카운터 데이터가 채워집니다 (지금 들어있는 건 2026-10 상위 40위 사용률만).
+1. https://supabase.com → **New project** (Region: Northeast Asia (Seoul)).
+2. 왼쪽 **SQL Editor** → `supabase/schema.sql` 전체 붙여넣기 → **Run**.
+3. 관리자 계정 만들기
+   1. **Authentication → Users → Add user → Create new user** → 이메일·비밀번호 입력, **Auto Confirm User** 체크.
+   2. SQL Editor에서 실행 (이메일만 바꾸기):
+      ```sql
+      insert into public.admins (user_id)
+        select id from auth.users where email = '내이메일@example.com'
+        on conflict do nothing;
+      ```
+   3. **Authentication → Sign In / Providers → Email** 에서 **Allow new users to sign up 끄기** 권장.
+      (켜져 있어도 `admins` 테이블에 없는 계정은 아무것도 못 봅니다. 그래도 끄는 게 깔끔합니다.)
+4. **Project Settings → API Keys** 에서 `Project URL` 과 **publishable(anon) 키**만 `config.js` 에 넣기.
+   **secret / service_role 키는 절대 넣지 마세요.**
+5. `config.js` 에서 `DISCORD_URL`, `GOAL_TIERS`(보상 문구), `TOP_PROMOTER_REWARD` 수정.
 
-## 3. 투표 모으기 (Supabase, 무료)
-로그인 창은 없습니다. 기기마다 보이지 않는 익명 계정이 자동으로 만들어져서 **포켓몬당 기기 1표**(수정 가능)로 중복을 막습니다.
+### 보안 구조 (schema.sql 이 하는 일)
+| 대상 | 익명(방문자) | 관리자 |
+|---|---|---|
+| `preorders` INSERT | 닉네임·유입경로·기타·추천인·ref여부 컬럼만 | - |
+| `preorders` SELECT / UPDATE / DELETE | 불가 | `admins` 에 등록된 계정만 (RLS) |
+| `preorder_stats()` | 총 인원 + 랭킹 TOP 10 (닉네임·추천 수만) | |
+| `preorder_position(닉네임)` | 몇 번째인지 (없으면 null → 중복 체크에도 사용) | |
 
-1. https://supabase.com 가입 → **New project** (Region: Northeast Asia (Seoul)).
-2. 왼쪽 **SQL Editor** → `supabase/schema.sql` 내용 전체 붙여넣기 → **Run**.
-3. **Authentication → Sign In / Providers** → **Allow anonymous sign-ins** 켜기 → Save.
-4. **Project Settings → API** (또는 Data API) 에서
-   - `Project URL`
-   - `anon` `public` 키 (**service_role 키는 절대 쓰지 말 것**)
-   를 복사해서 `config.js` 에 넣고 GitHub에 다시 업로드.
-5. 사이트 → 랭킹·투표 → 투표하기에서 S~D를 눌러보고, Supabase **Table Editor → votes** 에 줄이 생기면 성공.
+- 닉네임 규칙(3~16자, 영문/숫자/밑줄/공백), 유입 경로 값, 기타 50자, 본인 추천 금지 등은 **DB check 제약**으로 서버에서도 검사합니다.
+- 닉네임 중복은 소문자 변환 컬럼의 UNIQUE 인덱스로 막습니다 (`Steve` 와 `steve` 는 같은 사람).
+- 방문자는 예약 시각·무효·지급 여부를 직접 넣을 수 없습니다 (컬럼 권한으로 차단).
 
-결과 보기: Table Editor의 `vote_summary`(평균·표 수) 또는 `votes` → 오른쪽 위 **Export → CSV**.
+## 2. GitHub Pages 배포
+1. 이 저장소 **Settings → Pages** → Source: `Deploy from a branch`, Branch: `main` / `(root)` → Save.
+   (작업 브랜치에서 수정했다면 먼저 `main` 에 머지)
+2. 1~2분 뒤 `https://<아이디>.github.io/<저장소이름>/` 접속.
+3. 관리자: `https://<아이디>.github.io/<저장소이름>/admin.html`
+4. 추천 링크 확인: `https://<아이디>.github.io/<저장소이름>/r/테스트닉` → 메인으로 넘어가고 Q2에 `테스트닉`, Q1에 `친구 추천`이 선택돼 있으면 성공.
 
-### 알아둘 점
-- 브라우저 데이터를 지우거나 시크릿 창을 쓰면 새 기기로 취급돼서 다시 투표할 수 있습니다. 로그인 없이 완벽하게 막는 방법은 없습니다.
-- 어뷰징이 보이면 **Authentication → Attack Protection** 에서 CAPTCHA(Turnstile)를 켜거나, 나중에 구글/디스코드 로그인을 붙이면 됩니다. 익명 계정에 `linkIdentity` 로 연결하면 기존 표가 그대로 유지돼서 테이블은 안 바꿔도 됩니다.
-- Supabase 무료 플랜은 1주일 동안 요청이 없으면 프로젝트가 일시정지됩니다. 대시보드에서 Restore 누르면 복구됩니다.
+> `/r/닉네임` 은 GitHub Pages가 없는 경로에 `404.html` 을 보여주는 걸 이용합니다. 404.html 은 **사이트 루트**에 있어야 동작합니다.
+> 이 방식이라 카톡·디스코드 링크 미리보기는 `?ref=` 링크보다 덜 예쁘게 나올 수 있습니다.
 
-## 4. 로컬에서 실행
-`index.html` 을 더블클릭하면 안 됩니다 (모듈 로딩 막힘). 폴더에서:
+## 3. 테스트 순서
+1. 메인에서 예약 → 완료 화면에 `1번째 사전예약자` 표시.
+2. 새로고침해도 완료 화면 유지 (기기당 1회).
+3. 다른 브라우저(시크릿 창)에서 같은 닉네임을 대소문자만 바꿔 입력 → "이미 사전예약된 닉네임" 표시.
+4. 완료 화면의 내 링크로 다른 브라우저에서 예약 → 랭킹에 내 닉네임 1위.
+5. admin.html 로그인 → 표·그래프·랭킹 확인, 무효 처리 시 공개 페이지 카운트·랭킹에서 빠지는지 확인.
+
+## 4. (선택) Cloudflare Turnstile 캡차 켜기
+캡차는 **서버에서 검증해야 의미가 있습니다.** 화면에만 붙이면 봇이 Supabase API를 직접 호출해서 우회합니다. 그래서 켤 때는 예약이 Edge Function을 거치도록 바뀝니다.
+
+1. Cloudflare 대시보드 → **Turnstile → Add widget** → 도메인에 `<아이디>.github.io` 추가 → **Site Key / Secret Key** 발급.
+2. Supabase **Edge Functions → Deploy a new function → Via Editor** → 이름 `preorder` → `supabase/functions/preorder/index.ts` 내용 붙여넣기 → Deploy.
+   - CLI를 쓴다면: `supabase functions deploy preorder --no-verify-jwt`
+3. 함수 설정에서 **Verify JWT (Enforce JWT verification) 끄기**. (새 publishable 키는 JWT가 아니라서 켜두면 401 납니다)
+4. **Edge Functions → Secrets** 에 `TURNSTILE_SECRET_KEY` = 시크릿 키 추가. (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` 는 자동 제공)
+5. `config.js` 의 `TURNSTILE_SITE_KEY` 에 **사이트 키** 넣기. (시크릿 키는 절대 config.js 에 넣지 말 것)
+6. SQL Editor에서 직접 INSERT 막기:
+   ```sql
+   revoke insert on public.preorders from anon, authenticated;
+   ```
+   되돌리기: `schema.sql` 맨 아래 주석의 grant 문 실행.
+
+## 5. 로컬 실행
+`index.html` 더블클릭은 안 됩니다 (모듈 로딩 막힘).
 ```
-npx serve .        또는   python -m http.server 8000
+python -m http.server 8000     또는   npx serve .
 ```
+`http://localhost:8000/r/닉네임` 짧은 링크는 로컬 서버에선 동작하지 않습니다 (`?ref=` 로 테스트).
 
-## 업데이트 반영 (PWA)
-앱 파일과 데이터는 "네트워크 우선"이라 온라인이면 항상 최신 버전을 받습니다. 새 버전이 감지되면 자동으로 한 번 새로고침됩니다. 오프라인일 때만 저장된 도감·상성을 보여줍니다.
-
-## 데이터 출처·주의
-- 도감·상성: PokeAPI (https://pokeapi.co) CSV. 갱신은 `node scripts/build-dex.mjs`.
-- 사용률: Smogon 통계 (https://www.smogon.com/stats/) — **Pokémon Showdown 시뮬레이터** 래더 기준이며 게임 내 공식 랭크 순위가 아닙니다.
-- 포켓몬 챔피언스 M-C 룰(2026-09-09 ~ 12-02, 메가진화만 허용): Serebii, Victory Road 기준.
-- Showdown 내보내기에서 메가폼은 `Charizard-Mega-Y` 처럼 폼 이름으로 나갑니다. Showdown이 메가스톤 없이 이 표기를 그대로 받는지는 확인하지 못했습니다.
-- Smogon이 이번 달 "Checks and Counters" 데이터를 비워 둬서, 지금은 카운터가 타입 기준 추천만 나옵니다. 데이터가 생기면 자동 표시.
-- 카운터 "타입 기준 추천"은 자속 기술만 계산합니다 (특성·도구·서브 기술·스피드 미반영).
+## 알아둘 점
+- **기기당 1회는 완벽하지 않습니다.** 브라우저 데이터 삭제·시크릿 창이면 다시 폼이 나옵니다. 대신 같은 닉네임은 DB에서 막히고, 가짜 닉네임으로 랭킹을 올리는 건 관리자 페이지에서 **무효** 처리하세요.
+- 캡차를 안 켜면 봇이 대량으로 가짜 예약을 넣을 수 있습니다. 홍보 랭킹 보상이 걸려 있으니 오픈 전 랭킹 1위는 꼭 관리자 페이지에서 직접 확인하세요.
+- 공개 페이지 숫자·랭킹은 20초마다 갱신됩니다.
+- 랭킹 동점이면 해당 추천 수에 먼저 도달한 사람이 위입니다.
+- 무효 처리된 사람이 홍보자이면 그 사람은 랭킹에서도 빠집니다.
+- Supabase 무료 플랜은 1주일 동안 요청이 없으면 프로젝트가 일시정지됩니다 (대시보드에서 Restore).
+- 이전 포켓배틀 노트의 `votes` 테이블은 그대로 남아 있습니다. 필요 없으면 `drop table public.votes cascade;`
